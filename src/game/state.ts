@@ -1,4 +1,4 @@
-import { isCheckmate, isInCheck } from './legalMoves';
+import { getLegalBoardMoves, getLegalDropMoves, isCheckmate, isInCheck } from './legalMoves';
 import { formatMove } from './notation';
 import type {
   AnyPieceKind,
@@ -76,7 +76,24 @@ const statusAfterMove = (state: GameState, nextPlayer: Player): GameState['statu
   return { type: 'playing' };
 };
 
+const sameSquare = (left: { file: number; rank: number }, right: { file: number; rank: number }) =>
+  left.file === right.file && left.rank === right.rank;
+
+const isLegalRequestedMove = (state: GameState, move: GameMove) => {
+  if (move.type === 'move') {
+    return getLegalBoardMoves(state, move.from).some(
+      (legalMove) => sameSquare(legalMove.to, move.to) && legalMove.promote === move.promote,
+    );
+  }
+
+  return getLegalDropMoves(state, move.pieceKind).some((legalMove) => sameSquare(legalMove.to, move.to));
+};
+
 export const applyMove = (state: GameState, move: GameMove): GameState => {
+  if (!isLegalRequestedMove(state, move)) {
+    throw new Error(move.type === 'move' ? 'Illegal board move.' : 'Illegal drop move.');
+  }
+
   const board = cloneBoard(state.board);
   const hands = cloneHands(state.hands);
   const nextPlayer = opponentOf(state.currentPlayer);

@@ -74,6 +74,30 @@ describe('getPseudoLegalBoardMoves', () => {
       { type: 'move', from: { file: 5, rank: 2 }, to: { file: 5, rank: 1 }, promote: true },
     ]);
   });
+
+  it('moves dragon as a rook plus one-step diagonals', () => {
+    const board = emptyBoard();
+    place(board, 5, 5, { owner: 'sente', kind: 'dragon' });
+    const state = stateWithBoard(board);
+    const destinations = getPseudoLegalBoardMoves(state, { file: 5, rank: 5 }).map((move) => move.to);
+
+    expect(destinations).toContainEqual({ file: 5, rank: 1 });
+    expect(destinations).toContainEqual({ file: 9, rank: 5 });
+    expect(destinations).toContainEqual({ file: 6, rank: 4 });
+    expect(destinations).not.toContainEqual({ file: 7, rank: 3 });
+  });
+
+  it('moves horse as a bishop plus one-step orthogonals', () => {
+    const board = emptyBoard();
+    place(board, 5, 5, { owner: 'sente', kind: 'horse' });
+    const state = stateWithBoard(board);
+    const destinations = getPseudoLegalBoardMoves(state, { file: 5, rank: 5 }).map((move) => move.to);
+
+    expect(destinations).toContainEqual({ file: 9, rank: 1 });
+    expect(destinations).toContainEqual({ file: 1, rank: 9 });
+    expect(destinations).toContainEqual({ file: 5, rank: 4 });
+    expect(destinations).not.toContainEqual({ file: 5, rank: 3 });
+  });
 });
 
 describe('isInCheck and getLegalBoardMoves', () => {
@@ -96,5 +120,35 @@ describe('isInCheck and getLegalBoardMoves', () => {
     const state = stateWithBoard(board);
 
     expect(getLegalBoardMoves(state, { file: 5, rank: 7 }).every((move) => move.to.file === 5)).toBe(true);
+  });
+
+  it('allows a pinned defender to block along the checking line', () => {
+    const board = emptyBoard();
+    place(board, 5, 9, { owner: 'sente', kind: 'king' });
+    place(board, 5, 1, { owner: 'gote', kind: 'king' });
+    place(board, 5, 5, { owner: 'gote', kind: 'rook' });
+    place(board, 4, 7, { owner: 'sente', kind: 'gold' });
+    const state = stateWithBoard(board);
+
+    expect(getLegalBoardMoves(state, { file: 4, rank: 7 })).toContainEqual({
+      type: 'move',
+      from: { file: 4, rank: 7 },
+      to: { file: 5, rank: 7 },
+      promote: false,
+    });
+  });
+
+  it('rejects king moves adjacent to the opposing king', () => {
+    const board = emptyBoard();
+    place(board, 5, 5, { owner: 'sente', kind: 'king' });
+    place(board, 5, 3, { owner: 'gote', kind: 'king' });
+    const state = stateWithBoard(board);
+
+    expect(getLegalBoardMoves(state, { file: 5, rank: 5 })).not.toContainEqual({
+      type: 'move',
+      from: { file: 5, rank: 5 },
+      to: { file: 5, rank: 4 },
+      promote: false,
+    });
   });
 });

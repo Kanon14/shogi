@@ -110,4 +110,36 @@ describe('applyMove', () => {
     expect(next.hands.sente.pawn).toBe(1);
     expect(next.currentPlayer).toBe('gote');
   });
+
+  it('rejects board moves that are not legal for the current position', () => {
+    const board = emptyBoard();
+    place(board, 5, 9, { owner: 'sente', kind: 'king' });
+    place(board, 5, 1, { owner: 'gote', kind: 'king' });
+    place(board, 7, 7, { owner: 'sente', kind: 'pawn' });
+    const state = stateWithBoard(board);
+
+    expect(() =>
+      applyMove(state, {
+        type: 'move',
+        from: { file: 7, rank: 7 },
+        to: { file: 7, rank: 5 },
+        promote: false,
+      }),
+    ).toThrow('Illegal board move.');
+  });
+
+  it('rejects drops that are not legal for the current position', () => {
+    const board = emptyBoard();
+    place(board, 5, 9, { owner: 'sente', kind: 'king' });
+    place(board, 5, 1, { owner: 'gote', kind: 'king' });
+    const state = stateWithBoard(board, { hands: { sente: { pawn: 1 }, gote: {} } });
+
+    expect(() =>
+      applyMove(state, {
+        type: 'drop',
+        pieceKind: 'pawn',
+        to: { file: 4, rank: 1 },
+      }),
+    ).toThrow('Illegal drop move.');
+  });
 });
