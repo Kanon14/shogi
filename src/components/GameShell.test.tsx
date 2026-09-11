@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { GameShell } from './GameShell';
 import type { Board, GameState, Piece } from '../game/types';
 
@@ -56,6 +56,10 @@ const optionalPromotionState = (): GameState => {
 };
 
 describe('GameShell', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('renders a 9x9 board and current turn', () => {
     render(<GameShell />);
 
@@ -74,6 +78,35 @@ describe('GameShell', () => {
     expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
   });
 
+  it('saves the current game after a move', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('shogi.gameState.v1')).toContain('"currentPlayer":"gote"');
+    });
+  });
+
+  it('restores a saved game after remounting', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await waitFor(() => {
+      expect(localStorage.getItem('shogi.gameState.v1')).not.toBeNull();
+    });
+
+    unmount();
+    render(<GameShell />);
+
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+  });
+
   it('resets the game after a move', async () => {
     const user = userEvent.setup();
     render(<GameShell />);
@@ -84,6 +117,23 @@ describe('GameShell', () => {
 
     expect(screen.getByText(/sente to move/i)).toBeInTheDocument();
     expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
+  });
+
+  it('clears the saved game when starting a new game', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await waitFor(() => {
+      expect(localStorage.getItem('shogi.gameState.v1')).not.toBeNull();
+    });
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('shogi.gameState.v1')).toBeNull();
+    });
   });
 
   it('drops a piece from hand onto the board', async () => {

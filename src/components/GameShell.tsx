@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Board } from './Board';
 import { GameStatus } from './GameStatus';
 import { Hand } from './Hand';
@@ -17,6 +17,31 @@ const sameSquare = (a: Square, b: Square) => a.file === b.file && a.rank === b.r
 
 const pieceAt = (state: GameState, square: Square) => state.board[square.rank - 1][9 - square.file];
 
+const SAVED_GAME_STATE_KEY = 'shogi.gameState.v1';
+
+const loadSavedGameState = () => {
+  try {
+    const savedState = localStorage.getItem(SAVED_GAME_STATE_KEY);
+    return savedState ? (JSON.parse(savedState) as GameState) : null;
+  } catch {
+    localStorage.removeItem(SAVED_GAME_STATE_KEY);
+    return null;
+  }
+};
+
+const saveGameState = (state: GameState) => {
+  try {
+    if (state.history.length === 0) {
+      localStorage.removeItem(SAVED_GAME_STATE_KEY);
+      return;
+    }
+
+    localStorage.setItem(SAVED_GAME_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // A storage failure should not block local play.
+  }
+};
+
 const uniqueDestinations = (moves: Array<BoardMove | DropMove>) =>
   moves.reduce<Square[]>((destinations, move) => {
     if (!destinations.some((square) => sameSquare(square, move.to))) destinations.push(move.to);
@@ -28,7 +53,7 @@ type GameShellProps = {
 };
 
 export function GameShell({ initialState }: GameShellProps) {
-  const [gameState, setGameState] = useState(() => initialState ?? createInitialGameState());
+  const [gameState, setGameState] = useState(() => initialState ?? loadSavedGameState() ?? createInitialGameState());
   const [selection, setSelection] = useState<Selection | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<BoardMove | null>(null);
 
@@ -38,6 +63,10 @@ export function GameShell({ initialState }: GameShellProps) {
     () => (selection ? uniqueDestinations(selection.legalMoves) : []),
     [selection],
   );
+
+  useEffect(() => {
+    if (!initialState) saveGameState(gameState);
+  }, [gameState, initialState]);
 
   const resetGame = () => {
     setGameState(createInitialGameState());
