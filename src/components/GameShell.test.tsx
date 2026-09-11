@@ -136,6 +136,63 @@ describe('GameShell', () => {
     });
   });
 
+  it('moves backward and forward through move history', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByLabelText('gote pawn on 3-3'));
+    await user.click(screen.getByLabelText('empty square 3-4'));
+
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 3-4')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+
+    expect(screen.getByText('Viewing move 1 of 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 3-3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+
+    expect(screen.getByText('Viewing start position')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 3-3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next move' }));
+
+    expect(screen.getByText('Viewing move 1 of 2')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next move' }));
+
+    expect(screen.getByText('Viewing latest position')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 3-4')).toBeInTheDocument();
+  });
+
+  it('ignores board input while reviewing move history', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+
+    expect(screen.getByText('Viewing start position')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Next move' }));
+
+    expect(screen.getByText('Viewing latest position')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+  });
+
   it('drops a piece from hand onto the board', async () => {
     const user = userEvent.setup();
     render(<GameShell initialState={stateWithSenteHandGold()} />);

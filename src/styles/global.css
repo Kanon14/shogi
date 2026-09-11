@@ -190,6 +190,33 @@ button:focus-visible {
   margin: 6px 0;
 }
 
+.review-status {
+  margin: 0 0 10px;
+  color: #52616b;
+  font-size: 0.9rem;
+}
+
+.history-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.history-controls button {
+  min-height: 36px;
+  border: 1px solid #4f675a;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+}
+
+.history-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .promotion-dialog {
   position: fixed;
   inset: auto 20px 20px auto;
