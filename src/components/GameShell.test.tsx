@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { GameShell } from './GameShell';
@@ -105,6 +105,47 @@ describe('GameShell', () => {
     await user.click(screen.getByLabelText('empty square 5-3'));
     await user.click(screen.getByRole('button', { name: 'Keep' }));
 
+    expect(screen.getByLabelText('sente silver on 5-3')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+  });
+
+  it('focuses promote when optional promotion is offered', async () => {
+    const user = userEvent.setup();
+    render(<GameShell initialState={optionalPromotionState()} />);
+
+    await user.click(screen.getByLabelText('sente silver on 5-4'));
+    await user.click(screen.getByLabelText('empty square 5-3'));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Promote' })).toHaveFocus());
+  });
+
+  it('keeps keyboard focus inside the promotion choices', async () => {
+    const user = userEvent.setup();
+    render(<GameShell initialState={optionalPromotionState()} />);
+
+    await user.click(screen.getByLabelText('sente silver on 5-4'));
+    await user.click(screen.getByLabelText('empty square 5-3'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Promote' })).toHaveFocus());
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Keep' })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Promote' })).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Keep' })).toHaveFocus();
+  });
+
+  it('declines optional promotion with Escape', async () => {
+    const user = userEvent.setup();
+    render(<GameShell initialState={optionalPromotionState()} />);
+
+    await user.click(screen.getByLabelText('sente silver on 5-4'));
+    await user.click(screen.getByLabelText('empty square 5-3'));
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Promotion choice' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('sente silver on 5-3')).toBeInTheDocument();
     expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
   });
