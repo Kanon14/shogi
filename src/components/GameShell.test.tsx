@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameShell } from './GameShell';
+import { createInitialGameState } from '../game/initialPosition';
+import { applyMove } from '../game/state';
 import type { Board, GameState, Piece } from '../game/types';
 
 const emptyBoard = (): Board =>
@@ -191,6 +193,58 @@ describe('GameShell', () => {
     expect(screen.getByText('Viewing latest position')).toBeInTheDocument();
     expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
     expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+  });
+
+  it('exports the active game as a JSON file', async () => {
+    const user = userEvent.setup();
+    const createObjectUrl = vi.fn(() => 'blob:game-record');
+    const revokeObjectUrl = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectUrl });
+    render(<GameShell />);
+
+    await user.click(screen.getByRole('button', { name: 'Export game' }));
+
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:game-record');
+    click.mockRestore();
+  });
+
+  it('imports a valid game record and restores its history', async () => {
+    const user = userEvent.setup();
+    const initialState = createInitialGameState();
+    const movedState = applyMove(initialState, {
+      type: 'move',
+      from: { file: 7, rank: 7 },
+      to: { file: 7, rank: 6 },
+      promote: false,
+    });
+    const file = new File(
+      [JSON.stringify({ version: 1, activeState: movedState, positionHistory: [initialState, movedState] })],
+      'saved-game.json',
+      { type: 'application/json' },
+    );
+    render(<GameShell />);
+
+    await user.upload(screen.getByLabelText('Import game record'), file);
+
+    expect(screen.getByText('Game imported')).toBeInTheDocument();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+    expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
+  });
+
+  it('keeps the current game when an imported record is invalid', async () => {
+    const user = userEvent.setup();
+    const file = new File(['{"version":1,"activeState":{}}'], 'broken.json', { type: 'application/json' });
+    render(<GameShell />);
+
+    await user.upload(screen.getByLabelText('Import game record'), file);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not import this game record');
+    expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
   });
 
   it('drops a piece from hand onto the board', async () => {

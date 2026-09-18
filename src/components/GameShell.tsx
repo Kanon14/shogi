@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Board } from './Board';
+import { GameRecordControls } from './GameRecordControls';
 import { GameStatus } from './GameStatus';
 import { Hand } from './Hand';
 import { MoveHistory } from './MoveHistory';
 import { PromotionDialog } from './PromotionDialog';
 import { createInitialGameState } from '../game/initialPosition';
+import { parseGameRecord, serializeGameRecord, type SavedGameRecord } from '../game/gameRecord';
 import { getLegalBoardMoves, getLegalDropMoves } from '../game/legalMoves';
 import { applyMove } from '../game/state';
 import type { BoardMove, DropMove, GameState, PieceKind, Square } from '../game/types';
@@ -18,11 +20,6 @@ const sameSquare = (a: Square, b: Square) => a.file === b.file && a.rank === b.r
 const pieceAt = (state: GameState, square: Square) => state.board[square.rank - 1][9 - square.file];
 
 const SAVED_GAME_STATE_KEY = 'shogi.gameState.v1';
-
-type SavedGameRecord = {
-  activeState: GameState;
-  positionHistory: GameState[];
-};
 
 const createSavedGameRecord = (state: GameState): SavedGameRecord => ({
   activeState: state,
@@ -162,6 +159,27 @@ export function GameShell({ initialState }: GameShellProps) {
     if (chosenMove) applyBoardMove(chosenMove);
   };
 
+  const exportGame = () => {
+    const blob = new Blob([serializeGameRecord({ activeState: gameState, positionHistory })], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'shogi-game.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importGame = async (file: File) => {
+    const record = parseGameRecord(await file.text());
+    setGameState(record.activeState);
+    setPositionHistory(record.positionHistory);
+    setReviewIndex(record.positionHistory.length - 1);
+    setSelection(null);
+    setPendingPromotion(null);
+  };
+
   const selectedSquare = selection?.type === 'board' ? selection.square : null;
   const selectedHandPiece = selection?.type === 'hand' ? selection.pieceKind : null;
 
@@ -212,6 +230,7 @@ export function GameShell({ initialState }: GameShellProps) {
             setReviewIndex(latestIndex);
           }}
         />
+        <GameRecordControls onExport={exportGame} onImport={importGame} />
       </aside>
 
       <PromotionDialog move={pendingPromotion} onChoose={choosePromotion} />

@@ -58,7 +58,8 @@ button:focus-visible {
 
 .game-status,
 .hand,
-.move-history {
+.move-history,
+.game-record {
   border: 1px solid #b8c3bc;
   border-radius: 8px;
   background: #fbfcf8;
@@ -67,7 +68,8 @@ button:focus-visible {
 
 .game-status h1,
 .hand h2,
-.move-history h2 {
+.move-history h2,
+.game-record h2 {
   margin: 0 0 10px;
   font-size: 1.1rem;
 }
@@ -215,6 +217,43 @@ button:focus-visible {
 .history-controls button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.record-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.record-controls button,
+.import-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #4f675a;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2933;
+  cursor: pointer;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.import-button:focus-within {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.record-message {
+  margin: 10px 0 0;
+  color: #23633f;
+  font-size: 0.9rem;
+}
+
+.record-message.error {
+  color: #a12622;
 }
 
 .promotion-dialog {
