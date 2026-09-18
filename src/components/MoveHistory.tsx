@@ -4,6 +4,7 @@ type MoveHistoryProps = {
   history: MoveHistoryEntry[];
   reviewIndex: number;
   latestIndex: number;
+  currentMoveIndex: number | null;
   onPrevious: () => void;
   onNext: () => void;
   onLatest: () => void;
@@ -16,7 +17,15 @@ const reviewText = (reviewIndex: number, latestIndex: number) => {
   return `Viewing move ${reviewIndex} of ${latestIndex}`;
 };
 
-export function MoveHistory({ history, reviewIndex, latestIndex, onPrevious, onNext, onLatest }: MoveHistoryProps) {
+export function MoveHistory({
+  history,
+  reviewIndex,
+  latestIndex,
+  currentMoveIndex,
+  onPrevious,
+  onNext,
+  onLatest,
+}: MoveHistoryProps) {
   return (
     <section className="move-history" aria-label="Move history">
       <h2>Move history</h2>
@@ -36,8 +45,10 @@ export function MoveHistory({ history, reviewIndex, latestIndex, onPrevious, onN
         <p className="empty-history">No moves yet</p>
       ) : (
         <ol>
-          {history.map((entry) => (
-            <li key={entry.id}>{entry.label}</li>
+          {history.map((entry, index) => (
+            <li key={entry.id} aria-current={currentMoveIndex === index + 1 ? 'step' : undefined}>
+              {entry.label}
+            </li>
           ))}
         </ol>
       )}

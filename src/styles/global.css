@@ -158,6 +158,19 @@ button:focus-visible {
   box-shadow: inset 0 0 0 4px #2f855a;
 }
 
+.square[data-last-move="origin"] {
+  background: #f5dc96;
+}
+
+.square[data-last-move="destination"] {
+  background: #efc94f;
+}
+
+.square[data-in-check="true"] {
+  background: #efaaa4;
+  box-shadow: inset 0 0 0 4px #b4232c;
+}
+
 .piece {
   display: grid;
   place-items: center;
@@ -190,6 +203,12 @@ button:focus-visible {
 
 .move-history li {
   margin: 6px 0;
+}
+
+.move-history li[aria-current="step"] {
+  color: #155d3b;
+  font-weight: 700;
+  background: #dcecdf;
 }
 
 .review-status {

@@ -57,6 +57,20 @@ const optionalPromotionState = (): GameState => {
   };
 };
 
+const checkState = (): GameState => {
+  const board = emptyBoard();
+  place(board, 5, 1, { owner: 'gote', kind: 'king' });
+  place(board, 5, 9, { owner: 'sente', kind: 'king' });
+
+  return {
+    board,
+    hands: { sente: {}, gote: {} },
+    currentPlayer: 'gote',
+    history: [],
+    status: { type: 'check', checkedPlayer: 'gote' },
+  };
+};
+
 describe('GameShell', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -78,6 +92,30 @@ describe('GameShell', () => {
 
     expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
     expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+  });
+
+  it('identifies the origin and destination of the latest move', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+
+    expect(screen.getByLabelText('empty square 7-7')).toHaveAttribute('data-last-move', 'origin');
+    expect(screen.getByLabelText('empty square 7-7')).toHaveAccessibleDescription('Last move origin');
+    expect(screen.getByLabelText('sente pawn on 7-6')).toHaveAttribute('data-last-move', 'destination');
+    expect(screen.getByLabelText('sente pawn on 7-6')).toHaveAccessibleDescription('Last move destination');
+  });
+
+  it('clears the latest move indicators when starting a new game', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+
+    expect(document.querySelectorAll('[data-last-move]')).toHaveLength(0);
   });
 
   it('saves the current game after a move', async () => {
@@ -193,6 +231,21 @@ describe('GameShell', () => {
     expect(screen.getByText('Viewing latest position')).toBeInTheDocument();
     expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
     expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+  });
+
+  it('marks the move entry represented by a reviewed position', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByLabelText('gote pawn on 3-3'));
+    await user.click(screen.getByLabelText('empty square 3-4'));
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+
+    const entries = screen.getAllByRole('listitem');
+    expect(entries[0]).toHaveAttribute('aria-current', 'step');
+    expect(entries[1]).not.toHaveAttribute('aria-current');
   });
 
   it('exports the active game as a JSON file', async () => {
@@ -315,6 +368,14 @@ describe('GameShell', () => {
     render(<GameShell initialState={checkmateState()} />);
 
     expect(screen.getByText('sente wins by checkmate')).toBeInTheDocument();
+  });
+
+  it('identifies the checked king on the board', () => {
+    render(<GameShell initialState={checkState()} />);
+
+    const checkedKing = screen.getByLabelText('gote king on 5-1');
+    expect(checkedKing).toHaveAttribute('data-in-check', 'true');
+    expect(checkedKing).toHaveAccessibleDescription('King in check');
   });
 
   it('does not apply board clicks after checkmate', async () => {

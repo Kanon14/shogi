@@ -19,6 +19,47 @@ const sameSquare = (a: Square, b: Square) => a.file === b.file && a.rank === b.r
 
 const pieceAt = (state: GameState, square: Square) => state.board[square.rank - 1][9 - square.file];
 
+const samePiece = (left: ReturnType<typeof pieceAt>, right: ReturnType<typeof pieceAt>) =>
+  left?.owner === right?.owner && left?.kind === right?.kind;
+
+const lastMoveSquares = (history: GameState[], index: number) => {
+  if (index <= 0 || !history[index - 1] || !history[index]) return { origin: null, destination: null };
+
+  const previous = history[index - 1];
+  const current = history[index];
+  let origin: Square | null = null;
+  let destination: Square | null = null;
+
+  for (let rank = 1; rank <= 9; rank += 1) {
+    for (let file = 1; file <= 9; file += 1) {
+      const square = { file, rank };
+      const previousPiece = pieceAt(previous, square);
+      const currentPiece = pieceAt(current, square);
+      if (samePiece(previousPiece, currentPiece)) continue;
+      if (previousPiece && !currentPiece) origin = square;
+      if (currentPiece) destination = square;
+    }
+  }
+
+  return { origin, destination };
+};
+
+const checkedKingSquare = (state: GameState): Square | null => {
+  const checkedPlayer =
+    state.status.type === 'check' ? state.status.checkedPlayer : state.status.type === 'checkmate' ? state.status.loser : null;
+  if (!checkedPlayer) return null;
+
+  for (let rank = 1; rank <= 9; rank += 1) {
+    for (let file = 1; file <= 9; file += 1) {
+      const square = { file, rank };
+      const piece = pieceAt(state, square);
+      if (piece?.owner === checkedPlayer && piece.kind === 'king') return square;
+    }
+  }
+
+  return null;
+};
+
 const SAVED_GAME_STATE_KEY = 'shogi.gameState.v1';
 
 const createSavedGameRecord = (state: GameState): SavedGameRecord => ({
@@ -78,6 +119,8 @@ export function GameShell({ initialState }: GameShellProps) {
   const latestIndex = positionHistory.length - 1;
   const isReviewingHistory = reviewIndex !== latestIndex;
   const isGameOver = gameState.status.type === 'checkmate';
+  const moveSquares = lastMoveSquares(positionHistory, reviewIndex);
+  const checkedKing = checkedKingSquare(displayedState);
 
   const legalDestinations = useMemo(
     () => (selection ? uniqueDestinations(selection.legalMoves) : []),
@@ -201,6 +244,9 @@ export function GameShell({ initialState }: GameShellProps) {
           board={displayedState.board}
           selectedSquare={isReviewingHistory ? null : selectedSquare}
           legalDestinations={isReviewingHistory ? [] : legalDestinations}
+          lastMoveOrigin={moveSquares.origin}
+          lastMoveDestination={moveSquares.destination}
+          checkedKingSquare={checkedKing}
           onSquareClick={handleSquareClick}
         />
       </section>
@@ -217,6 +263,7 @@ export function GameShell({ initialState }: GameShellProps) {
           history={gameState.history}
           reviewIndex={reviewIndex}
           latestIndex={latestIndex}
+          currentMoveIndex={isReviewingHistory && reviewIndex > 0 ? reviewIndex : null}
           onPrevious={() => {
             setSelection(null);
             setReviewIndex((index) => Math.max(0, index - 1));
