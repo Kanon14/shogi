@@ -224,7 +224,15 @@ button:focus-visible {
   margin-bottom: 12px;
 }
 
-.history-controls button {
+.active-game-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.history-controls button,
+.active-game-controls button {
   min-height: 36px;
   border: 1px solid #4f675a;
   border-radius: 6px;
@@ -233,7 +241,15 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.history-controls button:disabled {
+.active-game-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.history-controls button:disabled,
+.active-game-controls button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }

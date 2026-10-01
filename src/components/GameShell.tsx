@@ -111,6 +111,7 @@ export function GameShell({ initialState }: GameShellProps) {
   );
   const [gameState, setGameState] = useState(initialRecord.activeState);
   const [positionHistory, setPositionHistory] = useState(initialRecord.positionHistory);
+  const [redoHistory, setRedoHistory] = useState<GameState[]>([]);
   const [reviewIndex, setReviewIndex] = useState(initialRecord.positionHistory.length - 1);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<BoardMove | null>(null);
@@ -135,18 +136,45 @@ export function GameShell({ initialState }: GameShellProps) {
     const nextState = createInitialGameState();
     setGameState(nextState);
     setPositionHistory([nextState]);
+    setRedoHistory([]);
     setReviewIndex(0);
     setSelection(null);
     setPendingPromotion(null);
   };
 
   const commitMove = (move: BoardMove | DropMove) => {
+    setRedoHistory([]);
     setGameState((state) => {
       const nextState = applyMove(state, move);
       setPositionHistory((history) => [...history, nextState]);
       setReviewIndex((index) => index + 1);
       return nextState;
     });
+  };
+
+  const undoMove = () => {
+    if (isReviewingHistory || pendingPromotion || positionHistory.length <= 1) return;
+
+    const undoneState = positionHistory[positionHistory.length - 1];
+    const nextHistory = positionHistory.slice(0, -1);
+    const nextState = nextHistory[nextHistory.length - 1];
+    setGameState(nextState);
+    setPositionHistory(nextHistory);
+    setRedoHistory((history) => [undoneState, ...history]);
+    setReviewIndex(nextHistory.length - 1);
+    setSelection(null);
+  };
+
+  const redoMove = () => {
+    if (isReviewingHistory || pendingPromotion || redoHistory.length === 0) return;
+
+    const [restoredState, ...remainingRedoHistory] = redoHistory;
+    const nextHistory = [...positionHistory, restoredState];
+    setGameState(restoredState);
+    setPositionHistory(nextHistory);
+    setRedoHistory(remainingRedoHistory);
+    setReviewIndex(nextHistory.length - 1);
+    setSelection(null);
   };
 
   const applyBoardMove = (move: BoardMove) => {
@@ -218,6 +246,7 @@ export function GameShell({ initialState }: GameShellProps) {
     const record = parseGameRecord(await file.text());
     setGameState(record.activeState);
     setPositionHistory(record.positionHistory);
+    setRedoHistory([]);
     setReviewIndex(record.positionHistory.length - 1);
     setSelection(null);
     setPendingPromotion(null);
@@ -264,6 +293,11 @@ export function GameShell({ initialState }: GameShellProps) {
           reviewIndex={reviewIndex}
           latestIndex={latestIndex}
           currentMoveIndex={isReviewingHistory && reviewIndex > 0 ? reviewIndex : null}
+          canUndo={positionHistory.length > 1}
+          canRedo={redoHistory.length > 0}
+          activeControlsDisabled={isReviewingHistory || pendingPromotion !== null}
+          onUndo={undoMove}
+          onRedo={redoMove}
           onPrevious={() => {
             setSelection(null);
             setReviewIndex((index) => Math.max(0, index - 1));

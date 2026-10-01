@@ -248,6 +248,134 @@ describe('GameShell', () => {
     expect(entries[1]).not.toHaveAttribute('aria-current');
   });
 
+  it('undoes and redoes multiple active moves in order', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByLabelText('gote pawn on 3-3'));
+    await user.click(screen.getByLabelText('empty square 3-4'));
+
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+    expect(screen.getByLabelText('gote pawn on 3-3')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+    expect(screen.getByLabelText('sente pawn on 7-7')).toBeInTheDocument();
+    expect(screen.getByText(/sente to move/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Redo move' }));
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Redo move' }));
+    expect(screen.getByLabelText('gote pawn on 3-4')).toBeInTheDocument();
+    expect(screen.getByText(/sente to move/i)).toBeInTheDocument();
+  });
+
+  it('clears redo positions after a different move', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByLabelText('gote pawn on 3-3'));
+    await user.click(screen.getByLabelText('empty square 3-4'));
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+
+    await user.click(screen.getByLabelText('gote pawn on 4-3'));
+    await user.click(screen.getByLabelText('empty square 4-4'));
+
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+    expect(screen.getByLabelText('gote pawn on 3-3')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 4-4')).toBeInTheDocument();
+  });
+
+  it('disables active undo and redo while reviewing history', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    expect(screen.getByRole('button', { name: 'Undo move' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    expect(screen.getByRole('button', { name: 'Undo move' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Previous move' }));
+    expect(screen.getByRole('button', { name: 'Undo move' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+  });
+
+  it('persists the active timeline after undo', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByLabelText('gote pawn on 3-3'));
+    await user.click(screen.getByLabelText('empty square 3-4'));
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+    await waitFor(() => {
+      const savedRecord = JSON.parse(localStorage.getItem('shogi.gameState.v1') ?? '{}') as {
+        activeState?: GameState;
+        positionHistory?: GameState[];
+      };
+      expect(savedRecord.activeState?.history).toHaveLength(1);
+      expect(savedRecord.positionHistory).toHaveLength(2);
+    });
+
+    unmount();
+    render(<GameShell />);
+
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+    expect(screen.getByLabelText('gote pawn on 3-3')).toBeInTheDocument();
+    expect(screen.getByText(/gote to move/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+  });
+
+  it('clears redo positions when starting a new game', async () => {
+    const user = userEvent.setup();
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: /new game/i }));
+
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+  });
+
+  it('clears redo positions when importing a game', async () => {
+    const user = userEvent.setup();
+    const initialState = createInitialGameState();
+    const movedState = applyMove(initialState, {
+      type: 'move',
+      from: { file: 7, rank: 7 },
+      to: { file: 7, rank: 6 },
+      promote: false,
+    });
+    const file = new File(
+      [JSON.stringify({ version: 1, activeState: movedState, positionHistory: [initialState, movedState] })],
+      'saved-game.json',
+      { type: 'application/json' },
+    );
+    render(<GameShell />);
+
+    await user.click(screen.getByLabelText('sente pawn on 7-7'));
+    await user.click(screen.getByLabelText('empty square 7-6'));
+    await user.click(screen.getByRole('button', { name: 'Undo move' }));
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeEnabled();
+
+    await user.upload(screen.getByLabelText('Import game record'), file);
+
+    expect(screen.getByRole('button', { name: 'Redo move' })).toBeDisabled();
+    expect(screen.getByLabelText('sente pawn on 7-6')).toBeInTheDocument();
+  });
+
   it('exports the active game as a JSON file', async () => {
     const user = userEvent.setup();
     const createObjectUrl = vi.fn(() => 'blob:game-record');

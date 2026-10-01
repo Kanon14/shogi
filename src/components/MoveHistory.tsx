@@ -1,3 +1,4 @@
+import { Redo2, Undo2 } from 'lucide-react';
 import type { MoveHistoryEntry } from '../game/types';
 
 type MoveHistoryProps = {
@@ -5,6 +6,11 @@ type MoveHistoryProps = {
   reviewIndex: number;
   latestIndex: number;
   currentMoveIndex: number | null;
+  canUndo: boolean;
+  canRedo: boolean;
+  activeControlsDisabled: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
   onPrevious: () => void;
   onNext: () => void;
   onLatest: () => void;
@@ -22,6 +28,11 @@ export function MoveHistory({
   reviewIndex,
   latestIndex,
   currentMoveIndex,
+  canUndo,
+  canRedo,
+  activeControlsDisabled,
+  onUndo,
+  onRedo,
   onPrevious,
   onNext,
   onLatest,
@@ -30,6 +41,16 @@ export function MoveHistory({
     <section className="move-history" aria-label="Move history">
       <h2>Move history</h2>
       <p className="review-status">{reviewText(reviewIndex, latestIndex)}</p>
+      <div className="active-game-controls" aria-label="Active game controls">
+        <button type="button" onClick={onUndo} disabled={!canUndo || activeControlsDisabled}>
+          <Undo2 size={18} aria-hidden="true" />
+          Undo move
+        </button>
+        <button type="button" onClick={onRedo} disabled={!canRedo || activeControlsDisabled}>
+          <Redo2 size={18} aria-hidden="true" />
+          Redo move
+        </button>
+      </div>
       <div className="history-controls">
         <button type="button" onClick={onPrevious} disabled={reviewIndex === 0}>
           Previous move
