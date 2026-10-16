@@ -393,6 +393,20 @@ describe('GameShell', () => {
     click.mockRestore();
   });
 
+  it('exports the active game as a KIF file', async () => {
+    const user = userEvent.setup();
+    const createObjectUrl = vi.fn(() => 'blob:kif-record');
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectUrl });
+    render(<GameShell />);
+
+    await user.click(screen.getByRole('button', { name: 'Export KIF' }));
+
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(click).toHaveBeenCalledOnce();
+    click.mockRestore();
+  });
+
   it('imports a valid game record and restores its history', async () => {
     const user = userEvent.setup();
     const initialState = createInitialGameState();

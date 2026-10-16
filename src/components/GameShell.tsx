@@ -7,6 +7,7 @@ import { MoveHistory } from './MoveHistory';
 import { PromotionDialog } from './PromotionDialog';
 import { createInitialGameState } from '../game/initialPosition';
 import { parseGameRecord, serializeGameRecord, type SavedGameRecord } from '../game/gameRecord';
+import { formatKifRecord } from '../game/kif';
 import { getLegalBoardMoves, getLegalDropMoves } from '../game/legalMoves';
 import { applyMove } from '../game/state';
 import type { BoardMove, DropMove, GameState, PieceKind, Square } from '../game/types';
@@ -242,6 +243,16 @@ export function GameShell({ initialState }: GameShellProps) {
     URL.revokeObjectURL(url);
   };
 
+  const exportKif = () => {
+    const blob = new Blob([formatKifRecord(positionHistory)], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'shogi-game.kif';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const importGame = async (file: File) => {
     const record = parseGameRecord(await file.text());
     setGameState(record.activeState);
@@ -311,7 +322,7 @@ export function GameShell({ initialState }: GameShellProps) {
             setReviewIndex(latestIndex);
           }}
         />
-        <GameRecordControls onExport={exportGame} onImport={importGame} />
+        <GameRecordControls onExport={exportGame} onExportKif={exportKif} onImport={importGame} />
       </aside>
 
       <PromotionDialog move={pendingPromotion} onChoose={choosePromotion} />

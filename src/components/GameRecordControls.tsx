@@ -1,12 +1,13 @@
-import { Download, Upload } from 'lucide-react';
+import { Download, FileText, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 type GameRecordControlsProps = {
   onExport: () => void;
+  onExportKif: () => void;
   onImport: (file: File) => Promise<void>;
 };
 
-export function GameRecordControls({ onExport, onImport }: GameRecordControlsProps) {
+export function GameRecordControls({ onExport, onExportKif, onImport }: GameRecordControlsProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
@@ -33,6 +34,10 @@ export function GameRecordControls({ onExport, onImport }: GameRecordControlsPro
         <button type="button" onClick={onExport}>
           <Download size={18} aria-hidden="true" />
           Export game
+        </button>
+        <button type="button" onClick={onExportKif}>
+          <FileText size={18} aria-hidden="true" />
+          Export KIF
         </button>
         <label className="import-button">
           <Upload size={18} aria-hidden="true" />
